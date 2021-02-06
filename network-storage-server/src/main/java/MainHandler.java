@@ -1,21 +1,14 @@
-import auth.BasicAuthService;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.SimpleChannelInboundHandler;
-
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class MainHandler extends SimpleChannelInboundHandler<String> {
     final private ServerApp serverApp;
+    private ClientHandler client;
 
-public MainHandler(ServerApp serverApp){
-    this.serverApp=serverApp;
-}
+    public MainHandler(ServerApp serverApp, ClientHandler client){
+        this.serverApp=serverApp;
+        this.client=client;
+    }
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
         ctx.channel().writeAndFlush("Зарегайтесь или авторизуйтесь");
@@ -23,14 +16,22 @@ public MainHandler(ServerApp serverApp){
 
     }
 
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        super.channelRead(ctx, msg);
+    }
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, String s) throws Exception {
         System.out.println("Получено новое сообщение: "+s);
+        client.type_of_message(s,channelHandlerContext);
 
     }
-
-
+    @Override
+    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        serverApp.unsubscribe(client);
+        ctx.close();
+    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {

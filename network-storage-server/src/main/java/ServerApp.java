@@ -1,12 +1,10 @@
+import auth.AuthService;
+import auth.BasicAuthService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -14,8 +12,10 @@ import java.util.Set;
 public class ServerApp {
     private static final int PORT = 8189;
     private Set<ClientHandler> clients;
+    private AuthService authenticationService;
     public ServerApp() {
         clients = new HashSet<>();
+        authenticationService = new BasicAuthService();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -37,5 +37,14 @@ public class ServerApp {
     }
     public void unsubscribe(ClientHandler client) {
         clients.remove(client);
+    }
+    public AuthService getAuthenticationService() {
+        return authenticationService;
+    }
+    public synchronized boolean isLoggedIn(String nickname) {
+        return clients.stream()
+                .filter(clientHandler -> clientHandler.getName().equals(nickname))
+                .findFirst()
+                .isPresent();
     }
 }
