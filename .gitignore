@@ -1,0 +1,3 @@
+# Project exclude paths
+/network-storage-client/target/
+/network-storage-server/target/
