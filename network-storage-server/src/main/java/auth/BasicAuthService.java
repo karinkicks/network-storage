@@ -28,21 +28,12 @@ public class BasicAuthService implements AuthService{
 
     @Override
     public boolean doReg(String login, String password) {
-
-        Boolean flag=false;
+        Boolean isExist=false;
         for (User user : users) {
             if (user.getNickname().equals(login) && user.getPassword().equals(password)) {
-                flag=true;
+                isExist=true;
             }
         }
-        return flag;
-        /*
-        if (flag) {
-            System.out.println("Such user is already registered");
-        } else {
-            users.add(new User(login, password));
-        }*/
-
-
+        return isExist;
     }
 }

@@ -1,5 +1,12 @@
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.stream.ChunkedFile;
+
+import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 public class MainHandler extends SimpleChannelInboundHandler<String> {
     final private ServerApp serverApp;
@@ -18,7 +25,21 @@ public class MainHandler extends SimpleChannelInboundHandler<String> {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        super.channelRead(ctx, msg);
+
+            ByteBuf buff = (ByteBuf)msg;
+        System.out.println("1");
+            ByteBuffer nioBuffer = buff.nioBuffer();
+        System.out.println("2");
+            FileOutputStream fos = new FileOutputStream("E:\\test\\2.txt");
+        System.out.println("3");
+            FileChannel channel = fos.getChannel();
+        System.out.println("4");
+            while (nioBuffer.hasRemaining()) {
+                channel.write(nioBuffer);
+            }
+            channel.close();
+            fos.close();
+
     }
 
     @Override
