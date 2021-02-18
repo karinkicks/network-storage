@@ -1,19 +1,20 @@
+package server_app;
+
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.handler.codec.string.StringDecoder;
-import io.netty.handler.codec.string.StringEncoder;
+import server_app.ClientHandler;
+import server_app.MainHandler;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
     private ServerApp serverApp;
-    public ServerChannelInitializer(ServerApp serverApp){
+    public ClientHandler clientHandler;
+    public ServerChannelInitializer(ServerApp serverApp, ClientHandler clientHandler){
         this.serverApp = serverApp;
+        this.clientHandler=clientHandler;
     }
     @Override
     protected void initChannel(SocketChannel socketChannel) throws Exception {
-        ClientHandler client = new ClientHandler(serverApp, socketChannel);
         socketChannel.pipeline().addLast(
-                //new StringDecoder(),
-                //new StringEncoder(),
-                new MainHandler(serverApp, client));
+                new MainHandler(serverApp, clientHandler));
     }
 }

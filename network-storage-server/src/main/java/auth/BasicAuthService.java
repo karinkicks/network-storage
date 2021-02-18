@@ -16,14 +16,13 @@ public class BasicAuthService implements AuthService{
 
 
     @Override
-    public Optional<User> doAuth(String login, String password) {
-
+    public User doAuth(String login, String password) {
         for (User user : users) {
             if (user.getNickname().equals(login) && user.getPassword().equals(password)) {
-                return Optional.of(user);
+                return user;
             }
         }
-        return Optional.empty();
+        return null;
     }
 
     @Override

@@ -11,6 +11,7 @@
     <modules>
         <module>network-storage-server</module>
         <module>network-storage-client</module>
+        <module>commons</module>
     </modules>
     <properties>
         <maven.compiler.sourse>15</maven.compiler.sourse>
