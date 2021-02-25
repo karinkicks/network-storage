@@ -2,26 +2,24 @@ package server_app;
 
 import entity.User;
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.socket.SocketChannel;
-
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 public class ClientHandler {
 
-    private Map<Channel, User> clients = new HashMap<>();
-
-    public ClientHandler() {
-    }
+    private final Map<Channel, User> clients = new HashMap<>();
 
     public void subscribe(Channel ch, User user) {
         clients.put(ch,user);
     }
 
-    public void unsubscribe(Channel ch) {
-        clients.remove(ch);
+    public User unsubscribe(Channel ch) {
+        if(clients.containsKey(ch)){
+            User user = clients.get(ch);
+            clients.remove(ch);
+            return user;
+        }
+        return null;
     }
 
     public String getName(Channel ch){
@@ -32,10 +30,10 @@ public class ClientHandler {
         return clients.get(ch);
     }
 
-    public boolean isLoggedIn(String user) {
-        if(clients.containsValue(user) || !clients.isEmpty()) {
-            return true;
-        }
-        return false;
+    public boolean isLoggedIn(User user) {
+        return clients.containsValue(user);
+    }
+    public boolean isLoggedIn(Channel ch) {
+        return clients.containsKey(ch);
     }
 }

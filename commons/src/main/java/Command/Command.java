@@ -16,6 +16,7 @@ public enum Command {
     RN("rn",(byte) 8),
     HELP("help", (byte) 9),
     CD("cd", (byte) 10),
+    EXIT("exit", (byte) 11),
     UNKNOWN("unknown", Byte.MIN_VALUE);
 
 

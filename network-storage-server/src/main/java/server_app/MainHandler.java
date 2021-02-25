@@ -1,13 +1,10 @@
 package server_app;
 
 import Command.*;
+import entity.User;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-
-
-import java.nio.charset.StandardCharsets;
-
 
 public class MainHandler extends ChannelInboundHandlerAdapter {
     final private ServerApp serverApp;
@@ -21,9 +18,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelActive(ChannelHandlerContext ctx) throws Exception {
-        ByteBuf mes = ctx.alloc().buffer();
-        ctx.writeAndFlush(mes.writeBytes("Для помощи введите -help".getBytes(StandardCharsets.UTF_8)));
+    public void channelActive(ChannelHandlerContext ctx){
         commands = new Commands();
         System.out.println("Подключился клиент: " + ctx);
     }
@@ -65,6 +60,7 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
                 commands.toRemove(clientHandler,buff,ctx);
             case RN:
                 commands.toRename(clientHandler,buff,ctx);
+                break;
             case UNKNOWN:
                 break;
         }
@@ -75,17 +71,18 @@ public class MainHandler extends ChannelInboundHandlerAdapter {
 
     }
 
-
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        System.out.println("Отключился клиент " + clientHandler.getName(ctx.channel()));
-        clientHandler.unsubscribe(ctx.channel());
+    public void channelInactive(ChannelHandlerContext ctx){
+        User user = clientHandler.unsubscribe(ctx.channel());
+        System.out.println(user != null ? "Отключился клиент " + user.getNickname() : "Отключился неавторизованный клиент " + ctx);
         ctx.close();
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause){
         cause.printStackTrace();
+        User user = clientHandler.unsubscribe(ctx.channel());
+        System.out.println(user != null ? "Отключился клиент " + user.getNickname() : "Отключился неавторизованный клиент " + ctx);
         ctx.close();
     }
 }

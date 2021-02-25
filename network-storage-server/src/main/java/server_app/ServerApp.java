@@ -4,28 +4,19 @@ import auth.AuthService;
 import auth.BasicAuthService;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import server_app.ClientHandler;
-import server_app.ServerChannelInitializer;
-
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Set;
 
 public class ServerApp {
     private static final int PORT = 8189;
-    private Set<ChannelHandlerContext> clients;
-    private AuthService authenticationService;
-    private ClientHandler clientHandler;
+    private final AuthService authenticationService;
     public ServerApp() {
-        clients = new HashSet<>();
         authenticationService = new BasicAuthService();
-        clientHandler = new ClientHandler();
+        ClientHandler clientHandler = new ClientHandler();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {

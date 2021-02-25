@@ -37,7 +37,7 @@ public void toLogIn(ByteBuf buff, ServerApp serverApp, ClientHandler clientHandl
     String[] credentialValues =buff.toString(StandardCharsets.UTF_8).split("\\s");
     User user = serverApp.getAuthenticationService().doAuth(credentialValues[1], credentialValues[2]);
     if(user != null){
-        if (!clientHandler.isLoggedIn(user.getNickname())) {
+        if (!clientHandler.isLoggedIn(user)) {
             clientHandler.subscribe(ctx.channel(),user);
             System.out.println("Авторизовался клиент " + clientHandler.getName(ctx.channel()));
             mes.writeBytes("Auth OK".getBytes(StandardCharsets.UTF_8));
@@ -70,21 +70,29 @@ public void toLogIn(ByteBuf buff, ServerApp serverApp, ClientHandler clientHandl
 
     public void toLS(ClientHandler clientHandler, ChannelHandlerContext ctx) throws IOException {
         ByteBuf mes = ctx.alloc().buffer();
-        Files.walk(clientHandler.getUser(ctx.channel()).getCurrentPath(), FileVisitOption.FOLLOW_LINKS)
-                .map(Path::toFile)
-                .forEach(f -> mes.writeBytes((f.getAbsolutePath() + (f.isDirectory() ? " каталог" : " файл") +'\n').getBytes(StandardCharsets.UTF_8)));
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+        }else {
+            Files.walk(clientHandler.getUser(ctx.channel()).getCurrentPath(), FileVisitOption.FOLLOW_LINKS)
+                    .map(Path::toFile)
+                    .forEach(f -> mes.writeBytes((f.getPath() + (f.isDirectory() ? " каталог" : " файл") + '\n').getBytes(StandardCharsets.UTF_8)));
+        }
         ctx.writeAndFlush(mes);
     }
 
     public void toMkDir(ByteBuf buff, ClientHandler clientHandler, ChannelHandlerContext ctx) throws IOException {
         ByteBuf mes = ctx.alloc().buffer();
-        String[] credentialValuesDir =buff.toString(StandardCharsets.UTF_8).split("\\s");
-        Path p = Paths.get(clientHandler.getUser(ctx.channel()).getCurrentPath().toString(),credentialValuesDir[1]);
-        System.out.println(p);
-        if(!Files.exists(p)){
-            Files.createDirectory(p);
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+        }else {
+            String[] credentialValuesDir = buff.toString(StandardCharsets.UTF_8).split("\\s");
+            Path p = Paths.get(clientHandler.getUser(ctx.channel()).getCurrentPath().toString(), credentialValuesDir[1]);
+            System.out.println(p);
+            if (!Files.exists(p)) {
+                Files.createDirectory(p);
+            }
+            mes.writeBytes(("Директория " + credentialValuesDir[1] + " создана").getBytes(StandardCharsets.UTF_8));
         }
-        mes.writeBytes(("Директория " + credentialValuesDir[1] + " создана").getBytes(StandardCharsets.UTF_8));
         ctx.writeAndFlush(mes);
     }
 
@@ -99,35 +107,39 @@ public void toLogIn(ByteBuf buff, ServerApp serverApp, ClientHandler clientHandl
 
     public void toCD(ByteBuf buff, ClientHandler clientHandler, ChannelHandlerContext ctx) {
         ByteBuf mes = ctx.alloc().buffer();
-        if (mes.readableBytes() > 0) {
-            String[] cd =buff.toString(StandardCharsets.UTF_8).split("\\s");
-            System.out.println(cd[1]);
-            Path path = Paths.get(clientHandler
-                    .getUser(ctx.channel())
-                    .getCurrentPath()+cd[1]);
-            File f = new File(String.valueOf(path));
-            if(f.isDirectory()){
-                clientHandler.getUser(ctx.channel()).setCurrentPath(path);
-            }
-            else {
-                mes.writeBytes("Путь указан неверно".getBytes(StandardCharsets.UTF_8));
-                return;
-            }
-            mes.writeBytes(("Вы перешли в " + path.toString()).getBytes(StandardCharsets.UTF_8));
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+        }else {
+                if(buff.toString(StandardCharsets.UTF_8).contains(" ")){
+                String[] cd = buff.toString(StandardCharsets.UTF_8).split("\\s");
+                Path path = Paths.get(clientHandler
+                        .getUser(ctx.channel())
+                        .getCurrentPath() +"\\"+ cd[1]);
+                File f = new File(String.valueOf(path));
+                    if (f.isDirectory()) {
+                        clientHandler.getUser(ctx.channel()).setCurrentPath(path);
+                    } else {
+                        mes.writeBytes("Путь указан неверно".getBytes(StandardCharsets.UTF_8));
+                        return;
+                    }
+                mes.writeBytes(("Вы перешли в " + path.toString()).getBytes(StandardCharsets.UTF_8));
+                } else {
+                Path changedDirectory = clientHandler
+                        .getUser(ctx.channel())
+                        .getCurrentPath()
+                        .getParent();
+                clientHandler.getUser(ctx.channel()).setCurrentPath(changedDirectory);
+                mes.writeBytes(("Вы перешли в " + changedDirectory.toString()).getBytes(StandardCharsets.UTF_8));
         }
-        else {
-            Path changedDirectory = clientHandler
-                    .getUser(ctx.channel())
-                    .getCurrentPath()
-                    .getParent();
-            clientHandler.getUser(ctx.channel()).setCurrentPath(changedDirectory);
-            mes.writeBytes(("Вы перешли в " + changedDirectory.toString()).getBytes(StandardCharsets.UTF_8));
         }
         ctx.writeAndFlush(mes);
     }
 
     public void toUpLoad(ClientHandler clientHandler, ByteBuf buff, ChannelHandlerContext ctx) throws IOException {
         ByteBuf mes = ctx.alloc().buffer();
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+        }else {
         while (buff.readableBytes() > 0) {
             if (currentState == State.IDLE) {
                 currentState = State.NAME_LENGTH;
@@ -178,40 +190,56 @@ public void toLogIn(ByteBuf buff, ServerApp serverApp, ClientHandler clientHandl
                     }
                 }
             }
-
+        }
         }
     }
 
     public void toDownload(ClientHandler clientHandler, ByteBuf buff, ChannelHandlerContext ctx) throws IOException {
-        Path path = Paths.get(clientHandler.getUser(ctx.channel()).getCurrentPath() +"\\"+ buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
-        FileRegion region = new DefaultFileRegion(path.toFile(), 0, Files.size(path));
-        byte[] filenameBytes = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
-        ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1+4+filenameBytes.length + 8);
-        buf.writeByte(Command.DOWNLOAD.getSignal());
-        buf.writeInt(filenameBytes.length);
-        buf.writeBytes(filenameBytes);
-        buf.writeLong(Files.size(path));
-        ctx.writeAndFlush(buf);
-        ctx.writeAndFlush(region);
+        ByteBuf mes = ctx.alloc().buffer();
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+            ctx.writeAndFlush(mes);
+        }else {
+            Path path = Paths.get(clientHandler.getUser(ctx.channel()).getCurrentPath() + "\\" + buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
+            FileRegion region = new DefaultFileRegion(path.toFile(), 0, Files.size(path));
+            byte[] filenameBytes = path.getFileName().toString().getBytes(StandardCharsets.UTF_8);
+            ByteBuf buf = ByteBufAllocator.DEFAULT.directBuffer(1 + 4 + filenameBytes.length + 8);
+            buf.writeByte(Command.DOWNLOAD.getSignal());
+            buf.writeInt(filenameBytes.length);
+            buf.writeBytes(filenameBytes);
+            buf.writeLong(Files.size(path));
+            ctx.writeAndFlush(buf);
+            ctx.writeAndFlush(region);
+        }
     }
 
     public void toRemove(ClientHandler clientHandler, ByteBuf buff, ChannelHandlerContext ctx){
         ByteBuf mes = ctx.alloc().buffer();
-        File file = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() +"\\"+ buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
-        if(file.delete()){
-            mes.writeBytes("файл удален".getBytes());
-        }else mes.writeBytes("Файла не обнаружено".getBytes());
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+            ctx.writeAndFlush(mes);
+        }else {
+            File file = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() + "\\" + buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
+            if (file.delete()) {
+                mes.writeBytes("файл удален".getBytes());
+            } else mes.writeBytes("Файла не обнаружено".getBytes());
+        }
         ctx.writeAndFlush(mes);
     }
 
     public void toRename(ClientHandler clientHandler, ByteBuf buff, ChannelHandlerContext ctx){
         ByteBuf mes = ctx.alloc().buffer();
-        File file = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() +"\\"+ buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
-        File newFile = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() +"\\"+ buff.toString(StandardCharsets.UTF_8).split("\\s")[2]);
-        if(file.renameTo(newFile)){
-            mes.writeBytes("Файл переименован успешно".getBytes());;
-        }else{
-            mes.writeBytes("Файл не был переименован".getBytes());
+        if(clientHandler.isLoggedIn(ctx.channel())){
+            mes.writeBytes("Авторизуйтесь".getBytes(StandardCharsets.UTF_8));
+            ctx.writeAndFlush(mes);
+        }else {
+            File file = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() + "\\" + buff.toString(StandardCharsets.UTF_8).split("\\s")[1]);
+            File newFile = new File(clientHandler.getUser(ctx.channel()).getCurrentPath() + "\\" + buff.toString(StandardCharsets.UTF_8).split("\\s")[2]);
+            if (file.renameTo(newFile)) {
+                mes.writeBytes("Файл переименован успешно".getBytes());
+            } else {
+                mes.writeBytes("Файл не был переименован".getBytes());
+            }
         }
         ctx.writeAndFlush(mes);
     }
