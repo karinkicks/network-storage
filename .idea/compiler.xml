@@ -7,6 +7,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="network-storage-client" />
+        <module name="commons" />
         <module name="network-storage-server" />
       </profile>
     </annotationProcessing>
